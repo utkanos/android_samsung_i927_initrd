@@ -1,0 +1,72 @@
+on early-init
+    start ueventd
+
+on init
+    export PATH /sbin:/vendor/bin:/system/sbin:/system/bin:/system/xbin
+    export LD_LIBRARY_PATH /vendor/lib:/system/lib
+    export ANDROID_ROOT /system
+    export ANDROID_DATA /data
+    export EXTERNAL_STORAGE /sdcard
+
+    mkdir /etc
+    mkdir /sdcard
+    mkdir /preload
+    mkdir /system
+    mkdir /system/bin
+    mkdir /data
+    mkdir /cache
+    mkdir /efs
+    mkdir /tmp
+    mkdir /dbdata
+    mkdir /persist
+    mkdir /emmc
+    mkdir /mnt 0775 root root
+
+    #cwmr insert
+    symlink /misc /etc
+
+on early-fs
+
+    # parameter block
+    mkdir /mnt/.lfs 0755 root root
+
+on fs
+    mount tmpfs tmpfs /tmp mode=0755    
+    mount ext4 /dev/block/mmcblk0p3 /cache nosuid nodev noatime wait errors=panic
+    mkdir /efs
+    mount ext4 /dev/block/mmcblk0p1 /efs nosuid nodev noatime wait 
+    chown radio system /efs
+    chmod 0771 /efs
+
+on post-fs
+
+    #temp
+    chmod 750 /sbin/fat.format
+    mount rootfs rootfs / rw remount
+
+    write /proc/sys/kernel/panic_on_oops 1
+    write /proc/sys/kernel/hung_task_timeout_secs 0
+    write /proc/cpu/alignment 4
+    write /proc/sys/kernel/sched_latency_ns 10000000
+    write /proc/sys/kernel/sched_wakeup_granularity_ns 2000000
+    write /proc/sys/kernel/sched_compat_yield 1
+    write /proc/sys/kernel/sched_child_runs_first 0
+
+on boot
+
+    ifup lo
+    hostname localhost
+    domainname localdomain
+
+    class_start default
+
+service ueventd /sbin/ueventd
+    critical
+
+service recovery /sbin/recovery
+
+service adbd /sbin/adbd recovery
+
+on property:persist.service.adb.enable=1
+    start adbd
+
